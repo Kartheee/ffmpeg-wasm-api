@@ -1,9 +1,10 @@
 import express from 'express';
 import fetch from 'node-fetch';
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+import { createFFmpeg } from '@ffmpeg/ffmpeg';
 
 const app = express();
 const ffmpeg = createFFmpeg({ log: true });
+
 app.use(express.json());
 
 app.post('/process', async (req, res) => {
@@ -12,19 +13,22 @@ app.post('/process', async (req, res) => {
 
     if (!ffmpeg.isLoaded()) await ffmpeg.load();
 
-    const input = 'input.mp4';
-    const output = 'output.mp4';
+    const inputFile = 'input.mp4';
+    const outputFile = 'output.mp4';
+
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
 
-    ffmpeg.FS('writeFile', input, new Uint8Array(arrayBuffer));
-    await ffmpeg.run('-ss', start, '-t', duration, '-i', input, '-c', 'copy', output);
-    const data = ffmpeg.FS('readFile', output);
+    ffmpeg.FS('writeFile', inputFile, new Uint8Array(arrayBuffer));
 
-    res.setHeader('Content-Disposition', `attachment; filename=${output}`);
+    await ffmpeg.run('-ss', start, '-t', duration, '-i', inputFile, '-c', 'copy', outputFile);
+
+    const data = ffmpeg.FS('readFile', outputFile);
+
+    res.setHeader('Content-Disposition', `attachment; filename=${outputFile}`);
     res.send(Buffer.from(data));
   } catch (err) {
-    console.error(err);
+    console.error('FFmpeg Error:', err);
     res.status(500).send('Error processing video.');
   }
 });
